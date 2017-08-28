@@ -6,15 +6,26 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.RemoteException;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 
-public class MainActivity extends AppCompatActivity {
+import org.altbeacon.beacon.Beacon;
+import org.altbeacon.beacon.BeaconConsumer;
+import org.altbeacon.beacon.BeaconManager;
+import org.altbeacon.beacon.MonitorNotifier;
+import org.altbeacon.beacon.RangeNotifier;
+import org.altbeacon.beacon.Region;
+
+import java.util.Collection;
+
+public class MainActivity extends AppCompatActivity implements BeaconConsumer {
 
     private static final int PERMISSION_REQUEST_COARSE_LOCATION = 1;
     public static final String TAG = "MeshMusic";
+    private BeaconManager beaconManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +50,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
+
+        beaconManager = BeaconManager.getInstanceForApplication(this);
+        beaconManager.bind(this);
     }
 
     @Override
@@ -65,5 +79,55 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        beaconManager.unbind(this);
+    }
+    /*
+    @Override
+    public void onBeaconServiceConnect(){
+        beaconManager.addMonitorNotifier(new MonitorNotifier() {
+            @Override
+            public void didEnterRegion(Region region) {
+                Log.d(TAG, "I made a new friend");
+            }
+
+            @Override
+            public void didExitRegion(Region region) {
+                Log.d(TAG, "I no longer see a beacon");
+            }
+
+            @Override
+            public void didDetermineStateForRegion(int i, Region region) {
+                Log.d(TAG, "I have switched from seeing/not seeing, new state: "+i);
+            }
+        });
+        try {
+            beaconManager.startMonitoringBeaconsInRegion(new Region("myMonitoringUniqueId", null, null, null));
+        } catch (RemoteException e) {
+            Log.d(TAG, "Fail abounds: "+e.getMessage());
+        }
+    }
+    */
+    @Override
+    public void onBeaconServiceConnect(){
+      beaconManager.addRangeNotifier(new RangeNotifier() {
+          @Override
+          public void didRangeBeaconsInRegion(Collection<Beacon> collection, Region region) {
+              if(collection.size() > 0){
+                  Log.d(TAG, "My friend is "+collection.iterator().next().getDistance()+" meters away");
+              }
+          }
+      });
+
+      try{
+          beaconManager.startRangingBeaconsInRegion(new Region("myRangingUniqueId", null, null, null));
+      }
+      catch (RemoteException e){
+          Log.d(TAG, "Fail abounds: "+e.getMessage());
+      }
     }
 }
